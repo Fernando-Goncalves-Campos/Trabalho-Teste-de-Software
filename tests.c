@@ -330,8 +330,8 @@ bool test_remove_at() {
     //[1, 2, 3, 4]
 
     void* get_result;
-    ASSERT_CC_ERR_VALUE_NOT_FOUND(cc_array_remove(arr, (void*) 4, NULL))
-    ASSERT_CC_ERR_VALUE_NOT_FOUND(cc_array_remove(arr, (void*) 5, &get_result))
+    ASSERT_CC_ERR_VALUE_NOT_FOUND(cc_array_remove_at(arr, 4, NULL))
+    ASSERT_CC_ERR_VALUE_NOT_FOUND(cc_array_remove_at(arr, 5, &get_result))
     ASSERT_EQ(4, cc_array_size(arr))
 
     ASSERT_CC_OK(cc_array_remove_at(arr, 1, NULL)) //[1, 3, 4]
@@ -460,6 +460,186 @@ bool test_get_last(){
     return true;
 }
 
+bool test_subarray(){
+    CC_Array* arr;
+    CC_Array* subarr;
+
+    ASSERT_CC_OK(cc_array_new(&arr))
+    //[]
+
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 1))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 2))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 3))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 4))
+    //[1, 2, 3, 4]
+
+    ASSERT_CC_ERR_INVALID_RANGE(cc_array_subarray(arr, 3, 2, &subarr))
+    ASSERT_CC_ERR_INVALID_RANGE(cc_array_subarray(arr, 3, 4, &subarr))
+    ASSERT_CC_ERR_INVALID_RANGE(cc_array_subarray(arr, 3, 5, &subarr))
+    ASSERT_CC_ERR_INVALID_RANGE(cc_array_subarray(arr, 4, 3, &subarr))
+    ASSERT_CC_ERR_INVALID_RANGE(cc_array_subarray(arr, 4, 4, &subarr))
+    ASSERT_CC_ERR_INVALID_RANGE(cc_array_subarray(arr, 4, 5, &subarr))
+    ASSERT_CC_ERR_INVALID_RANGE(cc_array_subarray(arr, 5, 3, &subarr))
+    ASSERT_CC_ERR_INVALID_RANGE(cc_array_subarray(arr, 5, 4, &subarr))
+    ASSERT_CC_ERR_INVALID_RANGE(cc_array_subarray(arr, 5, 5, &subarr))
+    ASSERT_CC_ERR_INVALID_RANGE(cc_array_subarray(arr, 6, 5, &subarr))
+
+    ASSERT_CC_OK(cc_array_subarray(arr, 2, 3, &subarr)) //[3, 4]
+    ASSERT_EQ(2, cc_array_size(subarr))
+    ASSERT_EQ(2, cc_array_capacity(subarr))
+
+    void* get_result;
+    ASSERT_CC_OK(cc_array_get_at(subarr, 0, &get_result))
+    ASSERT_EQ(3, (int) get_result)
+    ASSERT_CC_OK(cc_array_get_at(subarr, 1, &get_result))
+    ASSERT_EQ(4, (int) get_result)
+
+    ASSERT_CC_OK(cc_array_subarray(arr, 1, 1, &subarr)) //[2]
+    ASSERT_EQ(1, cc_array_size(subarr))
+    ASSERT_EQ(1, cc_array_capacity(subarr))
+    
+    ASSERT_CC_OK(cc_array_get_at(subarr, 0, &get_result))
+    ASSERT_EQ(2, (int) get_result)
+
+    ASSERT_CC_OK(cc_array_subarray(arr, 3, 3, &subarr)) //[4]
+    ASSERT_EQ(1, cc_array_size(subarr))
+    ASSERT_EQ(1, cc_array_capacity(subarr))
+    
+    ASSERT_CC_OK(cc_array_get_at(subarr, 0, &get_result))
+    ASSERT_EQ(4, (int) get_result)
+
+    cc_array_destroy(arr);
+    return true;
+}
+
+bool test_copy_shallow(){
+    CC_Array* arr;
+    CC_Array* copy;
+
+    ASSERT_CC_OK(cc_array_new(&arr))
+    //[]
+
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 1))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 2))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 3))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 4))
+    //[1, 2, 3, 4]
+
+    ASSERT_CC_OK(cc_array_copy_shallow(arr, &copy)) //[1, 2, 3, 4]
+    ASSERT_EQ(4, cc_array_size(copy))
+    ASSERT_EQ(8, cc_array_capacity(copy))
+
+    void* get_result;
+    ASSERT_CC_OK(cc_array_get_at(copy, 0, &get_result))
+    ASSERT_EQ(1, (int) get_result)
+    ASSERT_CC_OK(cc_array_get_at(copy, 1, &get_result))
+    ASSERT_EQ(2, (int) get_result)
+    ASSERT_CC_OK(cc_array_get_at(copy, 2, &get_result))
+    ASSERT_EQ(3, (int) get_result)
+    ASSERT_CC_OK(cc_array_get_at(copy, 3, &get_result))
+    ASSERT_EQ(4, (int) get_result)
+
+    cc_array_destroy(arr);
+    return true;
+}
+
+void* copy_func(void* element){
+    return (void*) ((unsigned long long) element << 1);
+}
+
+bool test_copy_deep(){
+    CC_Array* arr;
+    CC_Array* copy;
+
+    ASSERT_CC_OK(cc_array_new(&arr))
+    //[]
+
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 1))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 2))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 3))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 4))
+    //[1, 2, 3, 4]
+
+    ASSERT_CC_OK(cc_array_copy_deep(arr, copy_func, &copy)) //[2, 4, 6, 8]
+    ASSERT_EQ(4, cc_array_size(copy))
+    ASSERT_EQ(8, cc_array_capacity(copy))
+
+    void* get_result;
+    ASSERT_CC_OK(cc_array_get_at(copy, 0, &get_result))
+    ASSERT_EQ(2, (int) get_result)
+    ASSERT_CC_OK(cc_array_get_at(copy, 1, &get_result))
+    ASSERT_EQ(4, (int) get_result)
+    ASSERT_CC_OK(cc_array_get_at(copy, 2, &get_result))
+    ASSERT_EQ(6, (int) get_result)
+    ASSERT_CC_OK(cc_array_get_at(copy, 3, &get_result))
+    ASSERT_EQ(8, (int) get_result)
+
+    cc_array_destroy(arr);
+    return true;
+}
+
+bool test_reverse(){
+    CC_Array* arr;
+
+    ASSERT_CC_OK(cc_array_new(&arr))
+    //[]
+
+    cc_array_reverse(arr);
+    //[]
+
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 1))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 2))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 3))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 4))
+    //[1, 2, 3, 4]
+
+    cc_array_reverse(arr); //[4, 3, 2, 1]
+
+    void* get_result;
+    ASSERT_CC_OK(cc_array_get_at(arr, 0, &get_result))
+    ASSERT_EQ(4, (int) get_result)
+    ASSERT_CC_OK(cc_array_get_at(arr, 1, &get_result))
+    ASSERT_EQ(3, (int) get_result)
+    ASSERT_CC_OK(cc_array_get_at(arr, 2, &get_result))
+    ASSERT_EQ(2, (int) get_result)
+    ASSERT_CC_OK(cc_array_get_at(arr, 3, &get_result))
+    ASSERT_EQ(1, (int) get_result)
+
+    cc_array_destroy(arr);
+    return true;
+}
+
+bool test_trim_capacity(){
+    CC_Array* arr;
+
+    ASSERT_CC_OK(cc_array_new(&arr))
+    //[]
+
+    cc_array_reverse(arr);
+    //[]
+
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 1))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 2))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 3))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 4))
+    //[1, 2, 3, 4]
+
+    ASSERT_CC_OK(cc_array_trim_capacity(arr))
+    ASSERT_EQ(4, cc_array_capacity(arr))
+
+    void* get_result;
+    ASSERT_CC_OK(cc_array_get_at(arr, 0, &get_result))
+    ASSERT_EQ(1, (int) get_result)
+    ASSERT_CC_OK(cc_array_get_at(arr, 1, &get_result))
+    ASSERT_EQ(2, (int) get_result)
+    ASSERT_CC_OK(cc_array_get_at(arr, 2, &get_result))
+    ASSERT_EQ(3, (int) get_result)
+    ASSERT_CC_OK(cc_array_get_at(arr, 3, &get_result))
+    ASSERT_EQ(4, (int) get_result)
+
+    cc_array_destroy(arr);
+    return true;
+}
 
 test_t TESTS[] = {
     &test_add,
@@ -473,5 +653,10 @@ test_t TESTS[] = {
     &test_remove_all_free,
     &test_get_at,
     &test_get_last,
+    &test_subarray,
+    &test_copy_shallow,
+    &test_copy_deep,
+    &test_reverse,
+    &test_trim_capacity,
     NULL
 };
