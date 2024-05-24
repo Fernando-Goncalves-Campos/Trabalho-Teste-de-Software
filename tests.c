@@ -330,20 +330,33 @@ bool test_remove_at() {
     //[1, 2, 3, 4]
 
     void* get_result;
-    ASSERT_CC_ERR_VALUE_NOT_FOUND(cc_array_remove_at(arr, 4, NULL))
-    ASSERT_CC_ERR_VALUE_NOT_FOUND(cc_array_remove_at(arr, 5, &get_result))
+    ASSERT_CC_ERR_OUT_OF_RANGE(cc_array_remove_at(arr, 4, NULL))
+    ASSERT_CC_ERR_OUT_OF_RANGE(cc_array_remove_at(arr, 5, &get_result))
     ASSERT_EQ(4, cc_array_size(arr))
 
     ASSERT_CC_OK(cc_array_remove_at(arr, 1, NULL)) //[1, 3, 4]
     ASSERT_EQ(3, cc_array_size(arr))
+    ASSERT_CC_OK(cc_array_get_at(arr, 1, &get_result))
+    ASSERT_EQ(3, (int) get_result)
 
-    ASSERT_CC_OK(cc_array_remove_at(arr, 2, &get_result)) //[1, 2]
+    ASSERT_CC_OK(cc_array_remove_at(arr, 2, &get_result)) //[1, 3]
     ASSERT_EQ(2, cc_array_size(arr))
     ASSERT_EQ(4, (int) get_result)
+    ASSERT_CC_OK(cc_array_get_last(arr, &get_result))
+    ASSERT_EQ(3, (int) get_result)
 
     ASSERT_CC_OK(cc_array_get_at(arr, 0, &get_result))
     ASSERT_EQ(1, (int) get_result)
-    ASSERT_CC_OK(cc_array_get_at(arr, 1, &get_result))
+    
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 1))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 2))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 3))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 4))
+    //[1, 3, 1, 2, 3, 4]
+
+    ASSERT_CC_OK(cc_array_remove_at(arr, 0, &get_result))
+    ASSERT_EQ(1, (int) get_result)
+    ASSERT_CC_OK(cc_array_get_at(arr, 0, &get_result))
     ASSERT_EQ(3, (int) get_result)
 
     cc_array_destroy(arr);
@@ -641,6 +654,410 @@ bool test_trim_capacity(){
     return true;
 }
 
+void sum(void *a, void *b, void *result) {
+    if(b == NULL) {
+        *(int*)result = (int) a;
+    } else if(a == result) {
+        *(int*)result = (*(int*)a + (int)b);
+    } else {
+        *(int*)result = ((int) a + (int) b);
+    }
+    *(int*)result = *(int*)result + 1;
+}
+
+bool test_reduce() {
+    CC_Array* arr;
+    int result = 0;
+
+    ASSERT_CC_OK(cc_array_new(&arr))
+    //[]
+    cc_array_reduce(arr, &sum, (void *) &result);
+    ASSERT_EQ(0, result);
+
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 1))
+    ASSERT_EQ(1, cc_array_size(arr))
+    ASSERT_EQ(8, cc_array_capacity(arr))
+    //[1]
+    cc_array_reduce(arr, &sum, (void *) &result);
+    ASSERT_EQ(2, result);
+
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 2))
+    ASSERT_EQ(2, cc_array_size(arr))
+    ASSERT_EQ(8, cc_array_capacity(arr))
+    //[1, 2]
+    result = 0;
+    cc_array_reduce(arr, &sum, (void *) &result);
+    ASSERT_EQ(4, result);
+
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 3))
+    ASSERT_EQ(3, cc_array_size(arr))
+    ASSERT_EQ(8, cc_array_capacity(arr))
+    //[1, 2, 3]
+    result = 0;
+    cc_array_reduce(arr, &sum, (void *) &result);
+    ASSERT_EQ(8, result);
+
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 4))
+    ASSERT_EQ(4, cc_array_size(arr))
+    ASSERT_EQ(8, cc_array_capacity(arr))
+    //[1, 2, 3, 4]
+    result = 0;
+    cc_array_reduce(arr, &sum, (void *) &result);
+    ASSERT_EQ(13, result);
+
+    cc_array_destroy(arr);
+    return true;
+}
+
+bool inList(const void *a) {
+    for(int i = 0; i < 10; i++) {
+        if((int) a == i) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool test_filter_mut() {
+    CC_Array* arr;
+
+    ASSERT_CC_OK(cc_array_new(&arr))
+    //[]
+    ASSERT_CC_ERR_OUT_OF_RANGE(cc_array_filter_mut(arr, &inList))
+
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 1))
+    ASSERT_EQ(1, cc_array_size(arr))
+    ASSERT_EQ(8, cc_array_capacity(arr))
+    //[1]
+
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 2))
+    ASSERT_EQ(2, cc_array_size(arr))
+    ASSERT_EQ(8, cc_array_capacity(arr))
+    //[1, 2]
+
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 3))
+    ASSERT_EQ(3, cc_array_size(arr))
+    ASSERT_EQ(8, cc_array_capacity(arr))
+    //[1, 2, 3]
+
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 10))
+    ASSERT_EQ(4, cc_array_size(arr))
+    ASSERT_EQ(8, cc_array_capacity(arr))
+    //[1, 2, 3, 10]
+    ASSERT_CC_OK(cc_array_filter_mut(arr, &inList))
+    ASSERT_EQ(3, cc_array_size(arr))
+
+    cc_array_destroy(arr);
+    return true;
+}
+
+bool test_filter() {
+    CC_Array* arr, *ar2;
+
+    ASSERT_CC_OK(cc_array_new(&arr))
+    //[]
+    ASSERT_CC_ERR_OUT_OF_RANGE(cc_array_filter(arr, &inList, &ar2))
+
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 1))
+    ASSERT_EQ(1, cc_array_size(arr))
+    ASSERT_EQ(8, cc_array_capacity(arr))
+    //[1]
+
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 2))
+    ASSERT_EQ(2, cc_array_size(arr))
+    ASSERT_EQ(8, cc_array_capacity(arr))
+    //[1, 2]
+
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 3))
+    ASSERT_EQ(3, cc_array_size(arr))
+    ASSERT_EQ(8, cc_array_capacity(arr))
+    //[1, 2, 3]
+
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 10))
+    ASSERT_EQ(4, cc_array_size(arr))
+    ASSERT_EQ(8, cc_array_capacity(arr))
+    //[1, 2, 3, 10]
+    ASSERT_CC_OK(cc_array_filter(arr, &inList, &ar2))
+    ASSERT_EQ(3, cc_array_size(ar2))
+    ASSERT_EQ(4, cc_array_size(arr))
+
+    cc_array_destroy(arr);
+    return true;
+}
+
+bool test_iter_init() {
+    CC_Array* arr;
+    CC_ArrayIter ariter;
+
+    ASSERT_CC_OK(cc_array_new(&arr))
+    cc_array_iter_init(&ariter, arr);
+    ASSERT_EQ(-1, (int) cc_array_iter_index(&ariter))
+
+    cc_array_destroy(arr);
+    return true;
+}
+
+bool test_iter_next() {
+    CC_Array* arr;
+    CC_ArrayIter ariter;
+
+    ASSERT_CC_OK(cc_array_new(&arr))
+    cc_array_iter_init(&ariter, arr);
+
+    void* get_result;
+    ASSERT_CC_ITER_END(cc_array_iter_next(&ariter, &get_result));
+
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 1))
+    ASSERT_EQ(1, cc_array_size(arr))
+    ASSERT_EQ(8, cc_array_capacity(arr))
+    //[1]
+
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 2))
+    ASSERT_EQ(2, cc_array_size(arr))
+    ASSERT_EQ(8, cc_array_capacity(arr))
+    //[1, 2]
+
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 3))
+    ASSERT_EQ(3, cc_array_size(arr))
+    ASSERT_EQ(8, cc_array_capacity(arr))
+    //[1, 2, 3]
+
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 10))
+    ASSERT_EQ(4, cc_array_size(arr))
+    ASSERT_EQ(8, cc_array_capacity(arr))
+    //[1, 2, 3, 10]
+
+    ASSERT_CC_OK(cc_array_iter_next(&ariter, &get_result))
+    ASSERT_EQ(1, (int) get_result);
+    ASSERT_CC_OK(cc_array_iter_next(&ariter, &get_result))
+    ASSERT_EQ(2, (int) get_result);
+    ASSERT_CC_OK(cc_array_iter_next(&ariter, &get_result))
+    ASSERT_EQ(3, (int) get_result);
+    ASSERT_CC_OK(cc_array_iter_next(&ariter, &get_result))
+    ASSERT_EQ(10, (int) get_result);    
+
+    cc_array_destroy(arr);
+    return true;
+}
+
+bool test_iter_remove() {
+    CC_Array* arr;
+    CC_ArrayIter ariter;
+
+    ASSERT_CC_OK(cc_array_new(&arr))
+    cc_array_iter_init(&ariter, arr);
+
+    void* get_result;
+    ASSERT_CC_ITER_END(cc_array_iter_next(&ariter, &get_result))
+
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 1))
+    ASSERT_EQ(1, cc_array_size(arr))
+    ASSERT_EQ(8, cc_array_capacity(arr))
+    //[1]
+
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 2))
+    ASSERT_EQ(2, cc_array_size(arr))
+    ASSERT_EQ(8, cc_array_capacity(arr))
+    //[1, 2]
+
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 3))
+    ASSERT_EQ(3, cc_array_size(arr))
+    ASSERT_EQ(8, cc_array_capacity(arr))
+    //[1, 2, 3]
+
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 10))
+    ASSERT_EQ(4, cc_array_size(arr))
+    ASSERT_EQ(8, cc_array_capacity(arr))
+    //[1, 2, 3, 10]
+
+    ASSERT_CC_OK(cc_array_iter_next(&ariter, &get_result))
+    ASSERT_EQ(1, (int) get_result)
+    ASSERT_CC_OK(cc_array_iter_next(&ariter, &get_result))
+    ASSERT_EQ(2, (int) get_result)
+
+    ASSERT_CC_OK(cc_array_iter_remove(&ariter, &get_result))
+    ASSERT_EQ(2, (int) get_result)
+    ASSERT_CC_ERR_VALUE_NOT_FOUND(cc_array_iter_remove(&ariter, &get_result))  
+
+    cc_array_destroy(arr);
+    return true;
+}
+
+bool test_iter_add() {
+    CC_Array* arr;
+    CC_ArrayIter ariter;
+
+    ASSERT_CC_OK(cc_array_new(&arr))
+    cc_array_iter_init(&ariter, arr);
+
+    void* get_result;
+    ASSERT_CC_ITER_END(cc_array_iter_next(&ariter, &get_result))
+
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 1))
+    ASSERT_EQ(1, cc_array_size(arr))
+    ASSERT_EQ(8, cc_array_capacity(arr))
+    //[1]
+
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 2))
+    ASSERT_EQ(2, cc_array_size(arr))
+    ASSERT_EQ(8, cc_array_capacity(arr))
+    //[1, 2]
+
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 3))
+    ASSERT_EQ(3, cc_array_size(arr))
+    ASSERT_EQ(8, cc_array_capacity(arr))
+    //[1, 2, 3]
+
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 10))
+    ASSERT_EQ(4, cc_array_size(arr))
+    ASSERT_EQ(8, cc_array_capacity(arr))
+    //[1, 2, 3, 10]
+
+    ASSERT_CC_OK(cc_array_iter_next(&ariter, &get_result))
+    ASSERT_EQ(1, (int) get_result)
+    ASSERT_CC_OK(cc_array_iter_next(&ariter, &get_result))
+    ASSERT_EQ(2, (int) get_result)
+
+    ASSERT_CC_OK(cc_array_iter_add(&ariter, (void *) 5))
+
+    ASSERT_CC_OK(cc_array_iter_next(&ariter, &get_result))
+    ASSERT_EQ(3, (int) get_result)
+
+    cc_array_destroy(arr);
+    return true;
+}
+
+bool test_iter_replace() {
+    CC_Array* arr;
+    CC_ArrayIter ariter;
+
+    ASSERT_CC_OK(cc_array_new(&arr))
+    cc_array_iter_init(&ariter, arr);
+
+    void* get_result;
+    ASSERT_CC_ITER_END(cc_array_iter_next(&ariter, &get_result))
+
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 1))
+    ASSERT_EQ(1, cc_array_size(arr))
+    ASSERT_EQ(8, cc_array_capacity(arr))
+    //[1]
+
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 2))
+    ASSERT_EQ(2, cc_array_size(arr))
+    ASSERT_EQ(8, cc_array_capacity(arr))
+    //[1, 2]
+
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 3))
+    ASSERT_EQ(3, cc_array_size(arr))
+    ASSERT_EQ(8, cc_array_capacity(arr))
+    //[1, 2, 3]
+
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 10))
+    ASSERT_EQ(4, cc_array_size(arr))
+    ASSERT_EQ(8, cc_array_capacity(arr))
+    //[1, 2, 3, 10]
+
+    ASSERT_CC_OK(cc_array_iter_next(&ariter, &get_result))
+    ASSERT_EQ(1, (int) get_result)
+    ASSERT_CC_OK(cc_array_iter_next(&ariter, &get_result))
+    ASSERT_EQ(2, (int) get_result)
+    ASSERT_CC_OK(cc_array_iter_next(&ariter, &get_result))
+    ASSERT_EQ(3, (int) get_result)
+
+    ASSERT_CC_OK(cc_array_iter_replace(&ariter, (void *) 5, &get_result))
+    ASSERT_EQ(3, (int) get_result)
+
+    cc_array_destroy(arr);
+    return true;
+}
+
+bool test_zip_iter_init() {
+    CC_Array *ar1, *ar2;
+    CC_ArrayZipIter arzip;
+
+    ASSERT_CC_OK(cc_array_new(&ar1))
+    ASSERT_CC_OK(cc_array_new(&ar2))
+
+    cc_array_zip_iter_init(&arzip, ar1, ar2);
+    ASSERT_EQ(-1, (int) cc_array_zip_iter_index(&arzip))
+
+    cc_array_destroy(ar1);
+    cc_array_destroy(ar2);
+    return true;
+}
+
+bool test_zip_iter_next() {
+    CC_Array *ar1, *ar2;
+    CC_ArrayZipIter arzip;
+
+    ASSERT_CC_OK(cc_array_new(&ar1))
+    ASSERT_CC_OK(cc_array_new(&ar2))
+
+    cc_array_zip_iter_init(&arzip, ar1, ar2);
+    ASSERT_EQ(-1, (int) cc_array_zip_iter_index(&arzip))
+
+    void *r1, *r2;
+    ASSERT_CC_ITER_END(cc_array_zip_iter_next(&arzip, &r1, &r2))
+
+    ASSERT_CC_OK(cc_array_add(ar1, (void*) 1))
+    ASSERT_EQ(1, cc_array_size(ar1))
+    ASSERT_EQ(8, cc_array_capacity(ar1))
+    //[1]
+    ASSERT_CC_OK(cc_array_add(ar1, (void*) 2))
+    ASSERT_EQ(2, cc_array_size(ar1))
+    ASSERT_EQ(8, cc_array_capacity(ar1))
+    //[1, 2]    
+    ASSERT_CC_OK(cc_array_add(ar1, (void*) 3))
+    ASSERT_EQ(3, cc_array_size(ar1))
+    ASSERT_EQ(8, cc_array_capacity(ar1))
+    //[1, 2, 3]
+    ASSERT_CC_OK(cc_array_add(ar1, (void*) 4))
+    ASSERT_EQ(4, cc_array_size(ar1))
+    ASSERT_EQ(8, cc_array_capacity(ar1))
+    //[1, 2, 3, 4]
+    ASSERT_CC_ITER_END(cc_array_zip_iter_next(&arzip, &r1, &r2))
+
+    ASSERT_CC_OK(cc_array_add(ar2, (void*) 2))
+    ASSERT_EQ(1, cc_array_size(ar2))
+    ASSERT_EQ(8, cc_array_capacity(ar2))
+    //[2]    
+    ASSERT_CC_OK(cc_array_add(ar2, (void*) 3))
+    ASSERT_EQ(2, cc_array_size(ar2))
+    ASSERT_EQ(8, cc_array_capacity(ar2))
+    //[2, 3]    
+    ASSERT_CC_OK(cc_array_add(ar2, (void*) 4))
+    ASSERT_EQ(3, cc_array_size(ar2))
+    ASSERT_EQ(8, cc_array_capacity(ar2))
+    //[2, 3, 4]    
+    ASSERT_CC_OK(cc_array_add(ar2, (void*) 5))
+    ASSERT_EQ(4, cc_array_size(ar2))
+    ASSERT_EQ(8, cc_array_capacity(ar2))
+    //[2, 3, 4, 5]
+    ASSERT_CC_OK(cc_array_add(ar2, (void*) 6))
+    ASSERT_EQ(5, cc_array_size(ar2))
+    ASSERT_EQ(8, cc_array_capacity(ar2))
+    //[2, 3, 4, 5, 6]
+
+    ASSERT_CC_OK(cc_array_zip_iter_next(&arzip, &r1, &r2))
+    ASSERT_EQ(1, (int) r1)
+    ASSERT_EQ(2, (int) r2)
+    ASSERT_CC_OK(cc_array_zip_iter_next(&arzip, &r1, &r2))
+    ASSERT_EQ(2, (int) r1)
+    ASSERT_EQ(3, (int) r2)
+    ASSERT_CC_OK(cc_array_zip_iter_next(&arzip, &r1, &r2))
+    ASSERT_EQ(3, (int) r1)
+    ASSERT_EQ(4, (int) r2)
+    ASSERT_CC_OK(cc_array_zip_iter_next(&arzip, &r1, &r2))
+    ASSERT_EQ(4, (int) r1)
+    ASSERT_EQ(5, (int) r2)
+    ASSERT_CC_ITER_END(cc_array_zip_iter_next(&arzip, &r1, &r2))
+
+    cc_array_destroy(ar1);
+    cc_array_destroy(ar2);
+    return true;
+}
+
 test_t TESTS[] = {
     &test_add,
     &test_add_at,
@@ -658,5 +1075,15 @@ test_t TESTS[] = {
     &test_copy_deep,
     &test_reverse,
     &test_trim_capacity,
+    &test_reduce,
+    &test_filter_mut,
+    &test_filter,
+    &test_iter_init,
+    &test_iter_next,
+    &test_iter_remove,
+    &test_iter_add,
+    &test_iter_replace,
+    &test_zip_iter_init,
+    &test_zip_iter_next,
     NULL
 };
