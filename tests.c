@@ -654,6 +654,165 @@ bool test_trim_capacity(){
     return true;
 }
 
+bool test_contains(){
+    CC_Array* arr;
+
+    ASSERT_CC_OK(cc_array_new(&arr))
+    //[]
+
+    size_t result = cc_array_contains(arr, (void*) 1);
+    ASSERT_EQ(0, result);
+
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 1))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 2))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 1))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 3))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 1))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 1))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 2))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 3))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 4))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 2))
+    // 1: 4x | 2: 3x | 3: 2x | 4: 1x
+    //[1, 2, 1, 3, 1, 1, 2, 3, 4, 2]
+
+    result = cc_array_contains(arr, (void*) 0);
+    ASSERT_EQ(0, result);
+    result = cc_array_contains(arr, (void*) 1);
+    ASSERT_EQ(4, result);
+    result = cc_array_contains(arr, (void*) 2);
+    ASSERT_EQ(3, result);
+    result = cc_array_contains(arr, (void*) 3);
+    ASSERT_EQ(2, result);
+    result = cc_array_contains(arr, (void*) 4);
+    ASSERT_EQ(1, result);
+    result = cc_array_contains(arr, (void*) 5);
+    ASSERT_EQ(0, result);
+
+    cc_array_destroy(arr);
+    return true;
+}
+
+int contains_value_comp(const void* element, const void* value){
+    return ((int) element * 2) + 1 != (int) value;
+}
+
+bool test_contains_value(){
+    CC_Array* arr;
+
+    ASSERT_CC_OK(cc_array_new(&arr))
+    //[]
+
+    size_t result = cc_array_contains_value(arr, (void*) 1, contains_value_comp);
+    ASSERT_EQ(0, result);
+
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 1))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 2))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 1))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 3))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 1))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 1))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 2))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 3))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 4))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 2))
+    // 1: 4x | 2: 3x | 3: 2x | 4: 1x
+    //[1, 2, 1, 3, 1, 1, 2, 3, 4, 2]
+
+    result = cc_array_contains_value(arr, (void*) 1, contains_value_comp);
+    ASSERT_EQ(0, result);
+    result = cc_array_contains_value(arr, (void*) 3, contains_value_comp);
+    ASSERT_EQ(4, result);
+    result = cc_array_contains_value(arr, (void*) 5, contains_value_comp);
+    ASSERT_EQ(3, result);
+    result = cc_array_contains_value(arr, (void*) 7, contains_value_comp);
+    ASSERT_EQ(2, result);
+    result = cc_array_contains_value(arr, (void*) 9, contains_value_comp);
+    ASSERT_EQ(1, result);
+    result = cc_array_contains_value(arr, (void*) 11, contains_value_comp);
+    ASSERT_EQ(0, result);
+
+    cc_array_destroy(arr);
+    return true;
+}
+
+bool test_index_of(){
+    CC_Array* arr;
+
+    ASSERT_CC_OK(cc_array_new(&arr))
+    //[]
+
+    size_t get_result;
+    ASSERT_CC_ERR_OUT_OF_RANGE(cc_array_index_of(arr, (void*) 1, &get_result))
+
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 1))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 2))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 3))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 4))
+    //[1, 2, 3, 4]
+
+    ASSERT_CC_ERR_OUT_OF_RANGE(cc_array_index_of(arr, (void*) 0, &get_result))
+    ASSERT_CC_OK(cc_array_index_of(arr, (void*) 1, &get_result))
+    ASSERT_EQ(0, get_result)
+    ASSERT_CC_OK(cc_array_index_of(arr, (void*) 2, &get_result))
+    ASSERT_EQ(1, get_result)
+    ASSERT_CC_OK(cc_array_index_of(arr, (void*) 3, &get_result))
+    ASSERT_EQ(2, get_result)
+    ASSERT_CC_OK(cc_array_index_of(arr, (void*) 4, &get_result))
+    ASSERT_EQ(3, get_result)
+    ASSERT_CC_ERR_OUT_OF_RANGE(cc_array_index_of(arr, (void*) 5, &get_result))
+
+    cc_array_destroy(arr);
+    return true;
+}
+
+int sort_comp(const void* lhs, const void* rhs){
+    return *(int*) lhs - *(int*) rhs;
+}
+
+bool test_sort(){
+    CC_Array* arr;
+
+    ASSERT_CC_OK(cc_array_new(&arr))
+    //[]
+
+    size_t result = cc_array_contains(arr, (void*) 1);
+    ASSERT_EQ(0, result);
+
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 2))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 1))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 4))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 3))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 1))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 1))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 3))
+    ASSERT_CC_OK(cc_array_add(arr, (void*) 2))
+    // 1: 3x | 2: 1x | 3: 2x | 4: 1x
+    //[2, 1, 4, 3, 1, 1, 3, 2]
+
+    cc_array_sort(arr, sort_comp);
+    //[1, 1, 1, 2, 3, 3, 4]
+
+    void* get_result;
+    ASSERT_CC_OK(cc_array_get_at(arr, 0, &get_result))
+    ASSERT_EQ(1, (int) get_result)
+    ASSERT_CC_OK(cc_array_get_at(arr, 1, &get_result))
+    ASSERT_EQ(1, (int) get_result)
+    ASSERT_CC_OK(cc_array_get_at(arr, 2, &get_result))
+    ASSERT_EQ(1, (int) get_result)
+    ASSERT_CC_OK(cc_array_get_at(arr, 3, &get_result))
+    ASSERT_EQ(2, (int) get_result)
+    ASSERT_CC_OK(cc_array_get_at(arr, 4, &get_result))
+    ASSERT_EQ(3, (int) get_result)
+    ASSERT_CC_OK(cc_array_get_at(arr, 5, &get_result))
+    ASSERT_EQ(3, (int) get_result)
+    ASSERT_CC_OK(cc_array_get_at(arr, 6, &get_result))
+    ASSERT_EQ(4, (int) get_result)
+
+    cc_array_destroy(arr);
+    return true;
+}
+
 void sum(void *a, void *b, void *result) {
     if(b == NULL) {
         *(int*)result = (int) a;
@@ -979,7 +1138,7 @@ bool test_zip_iter_init() {
     ASSERT_CC_OK(cc_array_new(&ar1))
     ASSERT_CC_OK(cc_array_new(&ar2))
 
-    cc_array_zip_iter_init(&arzip, ar1, ar2);
+    cc_Sinit(&arzip, ar1, ar2);
     ASSERT_EQ(-1, (int) cc_array_zip_iter_index(&arzip))
 
     cc_array_destroy(ar1);
@@ -1075,6 +1234,10 @@ test_t TESTS[] = {
     &test_copy_deep,
     &test_reverse,
     &test_trim_capacity,
+    &test_contains,
+    &test_contains_value,
+    &test_index_of,
+    &test_sort,
     &test_reduce,
     &test_filter_mut,
     &test_filter,
