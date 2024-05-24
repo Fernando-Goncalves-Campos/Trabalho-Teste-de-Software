@@ -1138,7 +1138,7 @@ bool test_zip_iter_init() {
     ASSERT_CC_OK(cc_array_new(&ar1))
     ASSERT_CC_OK(cc_array_new(&ar2))
 
-    cc_Sinit(&arzip, ar1, ar2);
+    cc_array_zip_iter_init(&arzip, ar1, ar2);
     ASSERT_EQ(-1, (int) cc_array_zip_iter_index(&arzip))
 
     cc_array_destroy(ar1);
@@ -1217,6 +1217,428 @@ bool test_zip_iter_next() {
     return true;
 }
 
+bool test_zip_iter_remove() {
+    CC_Array *ar1, *ar2;
+    CC_ArrayZipIter arzip;
+
+    ASSERT_CC_OK(cc_array_new(&ar1))
+    ASSERT_CC_OK(cc_array_new(&ar2))
+
+    cc_array_zip_iter_init(&arzip, ar1, ar2);
+    ASSERT_EQ(-1, (int) cc_array_zip_iter_index(&arzip))
+
+    void *r1, *r2;
+
+    ASSERT_CC_OK(cc_array_add(ar1, (void*) 1))
+    ASSERT_EQ(1, cc_array_size(ar1))
+    ASSERT_EQ(8, cc_array_capacity(ar1))
+    //[1]
+    ASSERT_CC_OK(cc_array_add(ar1, (void*) 2))
+    ASSERT_EQ(2, cc_array_size(ar1))
+    ASSERT_EQ(8, cc_array_capacity(ar1))
+    //[1, 2]    
+    ASSERT_CC_OK(cc_array_add(ar1, (void*) 3))
+    ASSERT_EQ(3, cc_array_size(ar1))
+    ASSERT_EQ(8, cc_array_capacity(ar1))
+    //[1, 2, 3]
+    ASSERT_CC_OK(cc_array_add(ar1, (void*) 4))
+    ASSERT_EQ(4, cc_array_size(ar1))
+    ASSERT_EQ(8, cc_array_capacity(ar1))
+    //[1, 2, 3, 4]
+    //ASSERT_CC_ERR_OUT_OF_RANGE(cc_array_zip_iter_remove(&arzip, &r1, &r2))
+
+    ASSERT_CC_OK(cc_array_add(ar2, (void*) 2))
+    ASSERT_EQ(1, cc_array_size(ar2))
+    ASSERT_EQ(8, cc_array_capacity(ar2))
+    //[2]    
+    ASSERT_CC_OK(cc_array_add(ar2, (void*) 3))
+    ASSERT_EQ(2, cc_array_size(ar2))
+    ASSERT_EQ(8, cc_array_capacity(ar2))
+    //[2, 3]    
+    ASSERT_CC_OK(cc_array_add(ar2, (void*) 4))
+    ASSERT_EQ(3, cc_array_size(ar2))
+    ASSERT_EQ(8, cc_array_capacity(ar2))
+    //[2, 3, 4]    
+    ASSERT_CC_OK(cc_array_add(ar2, (void*) 5))
+    ASSERT_EQ(4, cc_array_size(ar2))
+    ASSERT_EQ(8, cc_array_capacity(ar2))
+    //[2, 3, 4, 5]
+    ASSERT_CC_OK(cc_array_add(ar2, (void*) 6))
+    ASSERT_EQ(5, cc_array_size(ar2))
+    ASSERT_EQ(8, cc_array_capacity(ar2))
+    //[2, 3, 4, 5, 6]
+
+    ASSERT_CC_OK(cc_array_zip_iter_next(&arzip, &r1, &r2))
+    ASSERT_EQ(1, (int) r1)
+    ASSERT_EQ(2, (int) r2)
+
+    ASSERT_CC_OK(cc_array_zip_iter_remove(&arzip, &r1, &r2))
+    ASSERT_EQ(1, (int) r1)
+    ASSERT_EQ(2, (int) r2)
+    //[2, 3, 4]
+    //    ^
+    //[3, 4, 5, 6]
+    //    ^
+
+    ASSERT_CC_OK(cc_array_zip_iter_next(&arzip, &r1, &r2))
+    ASSERT_EQ(3, (int) r1)
+    ASSERT_EQ(4, (int) r2)
+    //[2, 3, 4]
+    //       ^
+    //[3, 4, 5, 6]
+    //       ^
+    
+    ASSERT_CC_OK(cc_array_zip_iter_remove(&arzip, &r1, &r2))
+    ASSERT_EQ(3, (int) r1)
+    ASSERT_EQ(4, (int) r2)
+    //[2, 4]
+    //       ^
+    //[3, 5, 6]
+    //       ^
+
+    ASSERT_CC_OK(cc_array_remove_at(ar1, 0, NULL))
+    ASSERT_CC_ERR_OUT_OF_RANGE(cc_array_zip_iter_remove(&arzip, NULL, NULL))
+    //[4]
+    //       ^
+    //[3, 5, 6]
+    //       ^
+
+    ASSERT_CC_OK(cc_array_remove_at(ar2, 1, NULL))
+    ASSERT_CC_ERR_OUT_OF_RANGE(cc_array_zip_iter_remove(&arzip, NULL, NULL))
+    //[4]
+    //       ^
+    //[3, 6]
+    //       ^
+    
+    ASSERT_CC_OK(cc_array_remove_at(ar2, 1, NULL))
+    //[4]
+    //       ^
+    //[3]
+    //       ^
+    ASSERT_CC_ERR_OUT_OF_RANGE(cc_array_zip_iter_remove(&arzip, NULL, NULL))
+
+    ASSERT_CC_OK(cc_array_remove_at(ar1, 0, NULL))
+    ASSERT_CC_OK(cc_array_remove_at(ar2, 0, NULL))
+    ASSERT_CC_ERR_OUT_OF_RANGE(cc_array_zip_iter_remove(&arzip, NULL, NULL))
+    //[]
+    //       ^
+    //[]
+    //       ^
+    ASSERT_CC_OK(cc_array_add(ar1, (void *) 1))
+    ASSERT_CC_ERR_OUT_OF_RANGE(cc_array_zip_iter_remove(&arzip, NULL, NULL))
+    //[1]
+    //       ^
+    //[]
+    //       ^
+
+    ASSERT_CC_OK(cc_array_add(ar1, (void *) 2))
+    ASSERT_CC_ERR_OUT_OF_RANGE(cc_array_zip_iter_remove(&arzip, NULL, NULL))
+    //[1, 2]
+    //       ^
+    //[]
+    //       ^
+
+    ASSERT_CC_OK(cc_array_add(ar2, (void *) 2))
+    ASSERT_CC_ERR_OUT_OF_RANGE(cc_array_zip_iter_remove(&arzip, NULL, NULL))
+    //[1, 2]
+    //       ^
+    //[2]
+    //       ^
+
+    ASSERT_CC_OK(cc_array_add(ar1, (void *) 3))
+    ASSERT_CC_ERR_OUT_OF_RANGE(cc_array_zip_iter_remove(&arzip, NULL, NULL))
+    //[1, 2, 3]
+    //       ^
+    //[2]
+    //       ^
+    ASSERT_CC_OK(cc_array_add(ar2, (void *) 3))
+    //[1, 2, 3]
+    //       ^
+    //[2, 3]
+    //       ^
+    ASSERT_CC_ERR_VALUE_NOT_FOUND(cc_array_zip_iter_remove(&arzip, &r1, &r2))
+
+    ASSERT_CC_OK(cc_array_remove_at(ar1, 0, NULL))
+    ASSERT_CC_OK(cc_array_remove_at(ar1, 0, NULL))
+    ASSERT_CC_OK(cc_array_remove_at(ar1, 0, NULL))
+    ASSERT_CC_OK(cc_array_remove_at(ar2, 0, NULL))
+    ASSERT_CC_OK(cc_array_remove_at(ar2, 0, NULL))
+
+    ASSERT_CC_OK(cc_array_add(ar2, (void *) 1))
+    ASSERT_CC_ERR_OUT_OF_RANGE(cc_array_zip_iter_remove(&arzip, NULL, NULL))
+    //[1]
+    //       ^
+    //[]
+    //       ^
+
+    ASSERT_CC_OK(cc_array_add(ar2, (void *) 2))
+    ASSERT_CC_ERR_OUT_OF_RANGE(cc_array_zip_iter_remove(&arzip, NULL, NULL))
+    //[1, 2]
+    //       ^
+    //[]
+    //       ^
+
+    ASSERT_CC_OK(cc_array_add(ar1, (void *) 2))
+    ASSERT_CC_ERR_OUT_OF_RANGE(cc_array_zip_iter_remove(&arzip, NULL, NULL))
+    //[1, 2]
+    //       ^
+    //[2]
+    //       ^
+
+    ASSERT_CC_OK(cc_array_add(ar2, (void *) 3))
+    ASSERT_CC_ERR_OUT_OF_RANGE(cc_array_zip_iter_remove(&arzip, NULL, NULL))
+    //[1, 2, 3]
+    //       ^
+    //[2]
+    //       ^
+    ASSERT_CC_OK(cc_array_add(ar1, (void *) 3))
+    //[1, 2, 3]
+    //       ^
+    //[2, 3]
+    //       ^
+    ASSERT_CC_ERR_VALUE_NOT_FOUND(cc_array_zip_iter_remove(&arzip, &r1, &r2))
+
+    cc_array_destroy(ar1);
+    cc_array_destroy(ar2);
+    return true;
+}
+
+bool test_zip_iter_add() {
+    CC_Array *ar1, *ar2;
+    CC_ArrayZipIter arzip;
+
+    ASSERT_CC_OK(cc_array_new(&ar1))
+    ASSERT_CC_OK(cc_array_new(&ar2))
+
+    cc_array_zip_iter_init(&arzip, ar1, ar2);
+    ASSERT_EQ(-1, (int) cc_array_zip_iter_index(&arzip))
+
+    ASSERT_CC_OK(cc_array_zip_iter_add(&arzip, (void *) 1, (void *) 10))
+    ASSERT_EQ(0, cc_array_zip_iter_index(&arzip))
+    ASSERT_EQ(1, cc_array_size(ar1))
+    ASSERT_EQ(1, cc_array_size(ar2))
+
+    ASSERT_CC_OK(cc_array_zip_iter_add(&arzip, (void *) 2, (void *) 9))
+    ASSERT_EQ(1, cc_array_zip_iter_index(&arzip))
+    ASSERT_EQ(2, cc_array_size(ar1))
+    ASSERT_EQ(2, cc_array_size(ar2))
+
+    ASSERT_CC_OK(cc_array_zip_iter_add(&arzip, (void *) 3, (void *) 8))
+    ASSERT_EQ(2, cc_array_zip_iter_index(&arzip))
+    ASSERT_EQ(3, cc_array_size(ar1))
+    ASSERT_EQ(3, cc_array_size(ar2))
+    
+    ASSERT_CC_OK(cc_array_zip_iter_add(&arzip, (void *) 4, (void *) 7))
+    ASSERT_EQ(3, cc_array_zip_iter_index(&arzip))
+    ASSERT_EQ(4, cc_array_size(ar1))
+    ASSERT_EQ(4, cc_array_size(ar2))
+    
+    ASSERT_CC_OK(cc_array_zip_iter_add(&arzip, (void *) 5, (void *) 6))
+    ASSERT_EQ(4, cc_array_zip_iter_index(&arzip))
+    ASSERT_EQ(5, cc_array_size(ar1))
+    ASSERT_EQ(5, cc_array_size(ar2))
+    
+    ASSERT_CC_OK(cc_array_zip_iter_add(&arzip, (void *) 6, (void *) 5))
+    ASSERT_EQ(5, cc_array_zip_iter_index(&arzip))
+    ASSERT_EQ(6, cc_array_size(ar1))
+    ASSERT_EQ(6, cc_array_size(ar2))
+    
+    ASSERT_CC_OK(cc_array_zip_iter_add(&arzip, (void *) 7, (void *) 4))
+    ASSERT_EQ(6, cc_array_zip_iter_index(&arzip))
+    ASSERT_EQ(7, cc_array_size(ar1))
+    ASSERT_EQ(7, cc_array_size(ar2))
+    
+    ASSERT_CC_OK(cc_array_zip_iter_add(&arzip, (void *) 8, (void *) 3))
+    ASSERT_EQ(7, cc_array_zip_iter_index(&arzip))
+    ASSERT_EQ(8, cc_array_size(ar1))
+    ASSERT_EQ(8, cc_array_size(ar2))
+    
+    ASSERT_CC_OK(cc_array_zip_iter_add(&arzip, (void *) 9, (void *) 2))
+    ASSERT_EQ(8, cc_array_zip_iter_index(&arzip))
+    ASSERT_EQ(9, cc_array_size(ar1))
+    ASSERT_EQ(9, cc_array_size(ar2))
+    
+    ASSERT_CC_OK(cc_array_zip_iter_add(&arzip, (void *) 10, (void *) 1))
+    ASSERT_EQ(9, cc_array_zip_iter_index(&arzip))
+    ASSERT_EQ(10, cc_array_size(ar1))
+    ASSERT_EQ(10, cc_array_size(ar2))
+    //[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    //                                ^
+    //[10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
+    //                                ^
+
+    cc_array_destroy(ar1);
+    cc_array_destroy(ar2);
+    return true;
+}
+
+bool test_zip_iter_replace() {
+    CC_Array *ar1, *ar2;
+    CC_ArrayZipIter arzip;
+
+    ASSERT_CC_OK(cc_array_new(&ar1))
+    ASSERT_CC_OK(cc_array_new(&ar2))
+
+    cc_array_zip_iter_init(&arzip, ar1, ar2);
+    ASSERT_EQ(-1, (int) cc_array_zip_iter_index(&arzip))
+    
+    void *r1, *r2;
+
+    ASSERT_CC_OK(cc_array_add(ar1, (void*) 1))
+    ASSERT_EQ(1, cc_array_size(ar1))
+    ASSERT_EQ(8, cc_array_capacity(ar1))
+    //[1]
+    ASSERT_CC_OK(cc_array_add(ar1, (void*) 2))
+    ASSERT_EQ(2, cc_array_size(ar1))
+    ASSERT_EQ(8, cc_array_capacity(ar1))
+    //[1, 2]    
+    ASSERT_CC_OK(cc_array_add(ar1, (void*) 3))
+    ASSERT_EQ(3, cc_array_size(ar1))
+    ASSERT_EQ(8, cc_array_capacity(ar1))
+    //[1, 2, 3]
+    ASSERT_CC_OK(cc_array_add(ar1, (void*) 4))
+    ASSERT_EQ(4, cc_array_size(ar1))
+    ASSERT_EQ(8, cc_array_capacity(ar1))
+    //[1, 2, 3, 4]
+    //ASSERT_CC_ERR_OUT_OF_RANGE(cc_array_zip_iter_remove(&arzip, &r1, &r2))
+
+    ASSERT_CC_OK(cc_array_add(ar2, (void*) 2))
+    ASSERT_EQ(1, cc_array_size(ar2))
+    ASSERT_EQ(8, cc_array_capacity(ar2))
+    //[2]    
+    ASSERT_CC_OK(cc_array_add(ar2, (void*) 3))
+    ASSERT_EQ(2, cc_array_size(ar2))
+    ASSERT_EQ(8, cc_array_capacity(ar2))
+    //[2, 3]    
+    ASSERT_CC_OK(cc_array_add(ar2, (void*) 4))
+    ASSERT_EQ(3, cc_array_size(ar2))
+    ASSERT_EQ(8, cc_array_capacity(ar2))
+    //[2, 3, 4]    
+    ASSERT_CC_OK(cc_array_add(ar2, (void*) 5))
+    ASSERT_EQ(4, cc_array_size(ar2))
+    ASSERT_EQ(8, cc_array_capacity(ar2))
+    //[2, 3, 4, 5]
+    ASSERT_CC_OK(cc_array_add(ar2, (void*) 6))
+    ASSERT_EQ(5, cc_array_size(ar2))
+    ASSERT_EQ(8, cc_array_capacity(ar2))
+    //[2, 3, 4, 5, 6]
+
+    ASSERT_CC_OK(cc_array_zip_iter_next(&arzip, &r1, &r2))
+    ASSERT_EQ(1, (int) r1)
+    ASSERT_EQ(2, (int) r2)
+
+    ASSERT_CC_OK(cc_array_zip_iter_remove(&arzip, &r1, &r2))
+    ASSERT_EQ(1, (int) r1)
+    ASSERT_EQ(2, (int) r2)
+    //[2, 3, 4]
+    //    ^
+    //[3, 4, 5, 6]
+    //    ^
+
+    ASSERT_CC_OK(cc_array_zip_iter_next(&arzip, &r1, &r2))
+    ASSERT_EQ(3, (int) r1)
+    ASSERT_EQ(4, (int) r2)
+    //[2, 3, 4]
+    //       ^
+    //[3, 4, 5, 6]
+    //       ^
+    
+    ASSERT_CC_OK(cc_array_zip_iter_remove(&arzip, &r1, &r2))
+    ASSERT_EQ(3, (int) r1)
+    ASSERT_EQ(4, (int) r2)
+    //[3, 4]
+    //       ^
+    //[4, 5, 6]
+    //       ^
+    ASSERT_CC_OK(cc_array_zip_iter_replace(&arzip, (void *) 10, (void *) 11, &r1, &r2))
+    ASSERT_EQ(4, (int) r1)
+    ASSERT_EQ(5, (int) r2)
+
+    ASSERT_CC_OK(cc_array_remove_at(ar1, 0, NULL))
+    ASSERT_CC_OK(cc_array_remove_at(ar1, 0, NULL))
+    ASSERT_CC_OK(cc_array_remove_at(ar2, 0, NULL))
+    ASSERT_CC_OK(cc_array_remove_at(ar2, 0, NULL))
+    ASSERT_CC_OK(cc_array_remove_at(ar2, 0, NULL))
+
+    ASSERT_CC_OK(cc_array_add(ar1, (void *) 1))
+    ASSERT_CC_ERR_OUT_OF_RANGE(cc_array_zip_iter_replace(&arzip, (void *) 1, (void *) 2, NULL, NULL))
+    //[1]
+    //       ^
+    //[]
+    //       ^
+
+    ASSERT_CC_OK(cc_array_add(ar1, (void *) 2))
+    ASSERT_CC_ERR_OUT_OF_RANGE(cc_array_zip_iter_replace(&arzip, (void *) 1, (void *) 2, NULL, NULL))
+    //[1, 2]
+    //       ^
+    //[]
+    //       ^
+
+    ASSERT_CC_OK(cc_array_add(ar2, (void *) 2))
+    ASSERT_CC_ERR_OUT_OF_RANGE(cc_array_zip_iter_replace(&arzip, (void *) 1, (void *) 2, NULL, NULL))
+    //[1, 2]
+    //       ^
+    //[2]
+    //       ^
+
+    ASSERT_CC_OK(cc_array_add(ar1, (void *) 3))
+    ASSERT_CC_ERR_OUT_OF_RANGE(cc_array_zip_iter_replace(&arzip, (void *) 1, (void *) 2, NULL, NULL))
+    //[1, 2, 3]
+    //       ^
+    //[2]
+    //       ^
+    ASSERT_CC_OK(cc_array_add(ar2, (void *) 3))
+    //[1, 2, 3]
+    //       ^
+    //[2, 3]
+    //       ^
+    ASSERT_CC_OK(cc_array_zip_iter_replace(&arzip, (void *) 3, (void *) 4, NULL, NULL))
+
+    ASSERT_CC_OK(cc_array_remove_at(ar1, 0, NULL))
+    ASSERT_CC_OK(cc_array_remove_at(ar1, 0, NULL))
+    ASSERT_CC_OK(cc_array_remove_at(ar1, 0, NULL))
+    ASSERT_CC_OK(cc_array_remove_at(ar2, 0, NULL))
+    ASSERT_CC_OK(cc_array_remove_at(ar2, 0, NULL))
+
+    ASSERT_CC_OK(cc_array_add(ar2, (void *) 1))
+    ASSERT_CC_ERR_OUT_OF_RANGE(cc_array_zip_iter_replace(&arzip, (void *) 1, (void *) 2, NULL, NULL))
+    //[1]
+    //       ^
+    //[]
+    //       ^
+
+    ASSERT_CC_OK(cc_array_add(ar2, (void *) 2))
+    ASSERT_CC_ERR_OUT_OF_RANGE(cc_array_zip_iter_replace(&arzip, (void *) 1, (void *) 2, NULL, NULL))
+    //[1, 2]
+    //       ^
+    //[]
+    //       ^
+
+    ASSERT_CC_OK(cc_array_add(ar1, (void *) 2))
+    ASSERT_CC_ERR_OUT_OF_RANGE(cc_array_zip_iter_replace(&arzip, (void *) 1, (void *) 2, NULL, NULL))
+    //[1, 2]
+    //       ^
+    //[2]
+    //       ^
+
+    ASSERT_CC_OK(cc_array_add(ar2, (void *) 3))
+    ASSERT_CC_ERR_OUT_OF_RANGE(cc_array_zip_iter_replace(&arzip, (void *) 1, (void *) 2, NULL, NULL))
+    //[1, 2, 3]
+    //       ^
+    //[2]
+    //       ^
+    ASSERT_CC_OK(cc_array_add(ar1, (void *) 3))
+    //[1, 2, 3]
+    //       ^
+    //[2, 3]
+    //       ^
+    ASSERT_CC_ERR_VALUE_NOT_FOUND(cc_array_zip_iter_replace(&arzip, (void *) 1, (void *) 2, &r1, &r2))    
+
+    cc_array_destroy(ar1);
+    cc_array_destroy(ar2);
+    return true;
+}
+
 test_t TESTS[] = {
     &test_add,
     &test_add_at,
@@ -1248,5 +1670,8 @@ test_t TESTS[] = {
     &test_iter_replace,
     &test_zip_iter_init,
     &test_zip_iter_next,
+    &test_zip_iter_remove,
+    &test_zip_iter_add,
+    &test_zip_iter_replace,
     NULL
 };
